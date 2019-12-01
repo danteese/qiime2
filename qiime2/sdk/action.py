@@ -235,12 +235,11 @@ class Action(metaclass=abc.ABCMeta):
                         warn(self._build_deprecation_message(),
                              FutureWarning)
 
-
-                with qiime2.sdk.work_cache([self.name, self.package, self.signature, self.description, self.id, provenance]) as cache: 
-                    print("Aquí deberían estar los inputs limpios")
-                    print("Cache")
-                    print("Inside Ctx")
-
+                with qiime2.sdk.work_cache([self.name, self.id, provenance, self.description]) as cache:
+                    # print(qiime2.core.path._ConcretePath)
+                    print("***************")
+                    print("Inside cache")
+                    print("***************")
 
                 # Execute
                 outputs = self._callable_executor_(scope, callable_args,
