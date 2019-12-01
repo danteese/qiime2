@@ -1,8 +1,6 @@
 import contextlib
 import qiime2
-import sys
 import os
-import inspect
 
 
 class Cache():
@@ -96,21 +94,27 @@ class ActionRecord():
         self.workingDir = workingDir
 
 
+def verify_cache_dir(path): 
+    if os.path.isdir(path + '.cache'):
+        print("Cache directory found.")
+        return True
+    return False
+
+
 @contextlib.contextmanager
 def work_cache(sg):
     # TODO Verify .cache dir
     # TODO Verify datase is inside
-    print("...Working in cache...")
-    name_action = sg[0]
-    action = sg[1]
-    provenance = sg[2]
-    description = sg[3]
-    record = ActionRecord(name_action, action, description, provenance.action_type,
-                          provenance.inputs, provenance.parameters, os.getcwd())
+    if verify_cache_dir(os.getcwd()):
+        print("Cache working")
+    else:
+        raise NotImplementedError('Mandatory to have .cache directory created')
+    record = ActionRecord(sg[0], sg[1], sg[2], sg[3].action_type,
+                          sg[3].inputs, sg[3].parameters, os.getcwd())
     print(record.name, record.action, record.description,
           record.actionType, record.inputs, record.params, record.workingDir)
 
     try:
-        yield provenance
+        yield record
     finally:
         print("Finally working with Cache")
