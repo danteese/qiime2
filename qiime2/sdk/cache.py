@@ -1,6 +1,11 @@
 import contextlib
+import qiime2
+import sys
+import os
+import inspect
 
-class Cache(): 
+
+class Cache():
     """
     Cache is a checker of the last processes in a QIIME2 pipeline
     taking account the main class of the files with Provenance.
@@ -13,7 +18,7 @@ class Cache():
         self.config = config
         self.path = path
 
-    # Database functions 
+    # Database functions
     def connection(self):
         """
         Do something with SQLite
@@ -44,7 +49,7 @@ class Cache():
         This function returns the full graph generated 
         by provenance file
         """
-    
+
     def generateNode(self, *args):
         """
         Creates and mount a temporary node.
@@ -58,16 +63,15 @@ class Cache():
         versions of the current system.
         """
 
-
     # No provenance FILE
-    def checkMD5(self, origin, current): 
+    def checkMD5(self, origin, current):
         """
         This function checks if the MD5 of one file (origin)
         is the same as the current file (current)
         """
 
 
-class YAMLParser(): 
+class YAMLParser():
     """
     Provenance YAML parser
     """
@@ -76,17 +80,36 @@ class YAMLParser():
         self.path = path
 
 
+class ActionRecord():
+    """
+    Helper class to save the right information inside
+    SQLite database.
+    """
+
+    def __init__(self, name, action, description, actionType, inputs, params, workingDir):
+        self.name = name
+        self.action = action
+        self.description = description
+        self.actionType = actionType
+        self.inputs = inputs
+        self.params = params
+        self.workingDir = workingDir
+
+
 @contextlib.contextmanager
 def work_cache(sg):
     #  Verify database
-    
-    print('#############################')
-    print(sg)
-    print(sg[-1].inputs)
-    print(sg[-1].action)
-    print('#############################')
-    
+    print("...Working in cache...")
+    name_action = sg[0]
+    action = sg[1]
+    provenance = sg[2]
+    description = sg[3]
+    record = ActionRecord(name_action, action, description, provenance.action_type,
+                          provenance.inputs, provenance.parameters, os.getcwd())
+    print(record.name, record.action, record.description,
+          record.actionType, record.inputs, record.params, record.workingDir)
+
     try:
-        yield sg
+        yield provenance
     finally:
         print("Finally working with Cache")
