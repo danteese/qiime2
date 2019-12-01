@@ -98,7 +98,8 @@ class ActionRecord():
 
 @contextlib.contextmanager
 def work_cache(sg):
-    #  Verify database
+    # TODO Verify .cache dir
+    # TODO Verify datase is inside
     print("...Working in cache...")
     name_action = sg[0]
     action = sg[1]
