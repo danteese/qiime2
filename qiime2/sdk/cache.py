@@ -1,6 +1,9 @@
 import contextlib
 import qiime2
 import os
+import sqlite3
+import json
+import numpy as np
 
 
 class Cache():
@@ -18,9 +21,21 @@ class Cache():
 
     # Database functions
     def connection(self):
-        """
-        Do something with SQLite
-        """
+        db=sqlite3.connect(self.path + '/cache.db')
+        try:        
+            cur =db.cursor()
+            cur.execute('''CREATE TABLE cache (
+            UUID TEXT (50),
+            inputs BLOB,
+            actionType TEXT (20) NOT NULL,
+            action TEXT (30),
+            parameters BLOB);''')
+            msg=True
+        except:
+            msg=False
+            db.rollback()
+        db.close()
+        return msg
 
     def generateExecUUID(self):
         """
@@ -30,16 +45,40 @@ class Cache():
         pipeline. 
         """
 
-    def isActionOnDB(self):
-        """
-        Query database and checks if the action info 
-        is in there 
-        """
+    def isActionOnDB(self,*args):
+        record = np.asarray(args)
+        comp = (record[0].name,json.dumps(record[0].inputs),record[0].actionType,record[0].action,json.dumps(record[0].params))
+        db=sqlite3.connect(self.path + '/cache.db')
+        cur =db.cursor()
+        try:
+            with db:
+                cur.execute('SELECT * FROM cache WHERE UUID=:UUID',{'UUID':record[0].name})
+            querie=cur.fetchall()
+            for queries in querie:
+                if comp == queries:
+                    msg = True
+                else:
+                    msg = False
+        except Exception as inst:
+            msg = False
+        return msg
 
     def saveAction(self, *args):
-        """
-        Save the important fingerprint of provenance node
-        """
+        record = np.asarray(args)
+        db=sqlite3.connect(self.path + '/cache.db')
+        cur =db.cursor()
+        try:
+            with db:
+                cur.execute('''INSERT INTO cache VALUES (
+                    :UUID,
+                    :inputs,
+                    :actionType,
+                    :action,
+                    :parameters)''',{'UUID':record[0].name,'inputs':json.dumps(record[0].inputs),'actionType':record[0].actionType,'action':record[0].action,'parameters':json.dumps(record[0].params)})
+                msg = 'Action added'
+        except Exception as inst:
+            msg=inst
+        return msg
 
     # Graph functions
     def graphReconstruction(self, file, path):
@@ -107,7 +146,20 @@ def work_cache(sg):
     # TODO Verify .cache dir
     # TODO Verify datase is inside
     if verify_cache_dir(os.getcwd()):
-        print("Cache working")
+        record = ActionRecord(sg[0], sg[1], sg[3], sg[2].action_type,
+                          sg[2].inputs, sg[2].parameters, os.getcwd())
+        cache = Cache('None',os.getcwd()+'/.cache')
+        msg=cache.connection()
+        if msg:
+            msg=cache.saveAction(record)
+            print(msg)
+        else:
+            msg=cache.isActionOnDB(record)
+            if msg:
+                print('Action alredy in chache')
+            else:
+                 msg=cache.saveAction(record)
+                 print(msg)
     else:
         raise NotImplementedError('Mandatory to have .cache directory created')
     record = ActionRecord(sg[0], sg[1], sg[3], sg[2].action_type,
@@ -119,3 +171,4 @@ def work_cache(sg):
         yield record
     finally:
         print("Finally working with Cache")
+
