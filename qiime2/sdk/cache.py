@@ -21,18 +21,18 @@ class Cache():
 
     # Database functions
     def connection(self):
-        db=sqlite3.connect(self.path + '/cache.db')
-        try:        
-            cur =db.cursor()
+        db = sqlite3.connect(self.path + '/cache.db')
+        try:
+            cur = db.cursor()
             cur.execute('''CREATE TABLE cache (
             UUID TEXT (50),
             inputs BLOB,
             actionType TEXT (20) NOT NULL,
             action TEXT (30),
             parameters BLOB);''')
-            msg=True
+            msg = True
         except:
-            msg=False
+            msg = False
             db.rollback()
         db.close()
         return msg
@@ -45,15 +45,18 @@ class Cache():
         pipeline. 
         """
 
-    def isActionOnDB(self,*args):
+    def isActionOnDB(self, *args):
         record = np.asarray(args)
-        comp = (record[0].name,json.dumps(record[0].inputs),record[0].actionType,record[0].action,json.dumps(record[0].params))
-        db=sqlite3.connect(self.path + '/cache.db')
-        cur =db.cursor()
+        comp = (record[0].name, json.dumps(record[0].inputs),
+                record[0].actionType, record[0].action, json.dumps(record[0].params))
+        db = sqlite3.connect(self.path + '/cache.db')
+        cur = db.cursor()
+        msg = ''
         try:
             with db:
-                cur.execute('SELECT * FROM cache WHERE UUID=:UUID',{'UUID':record[0].name})
-            querie=cur.fetchall()
+                cur.execute('SELECT * FROM cache WHERE UUID=:UUID',
+                            {'UUID': record[0].name})
+            querie = cur.fetchall()
             for queries in querie:
                 if comp == queries:
                     msg = True
@@ -65,8 +68,8 @@ class Cache():
 
     def saveAction(self, *args):
         record = np.asarray(args)
-        db=sqlite3.connect(self.path + '/cache.db')
-        cur =db.cursor()
+        db = sqlite3.connect(self.path + '/cache.db')
+        cur = db.cursor()
         try:
             with db:
                 cur.execute('''INSERT INTO cache VALUES (
@@ -74,10 +77,10 @@ class Cache():
                     :inputs,
                     :actionType,
                     :action,
-                    :parameters)''',{'UUID':record[0].name,'inputs':json.dumps(record[0].inputs),'actionType':record[0].actionType,'action':record[0].action,'parameters':json.dumps(record[0].params)})
+                    :parameters)''', {'UUID': record[0].name, 'inputs': json.dumps(record[0].inputs), 'actionType': record[0].actionType, 'action': record[0].action, 'parameters': json.dumps(record[0].params)})
                 msg = 'Action added'
         except Exception as inst:
-            msg=inst
+            msg = inst
         return msg
 
     # Graph functions
@@ -132,43 +135,96 @@ class ActionRecord():
         self.params = params
         self.workingDir = workingDir
 
+    def __getstate___(self):
+        return {
+            'actionName': self.name,
+            'actionID': self.action,
+            'actionType': self.actionType,
+            'description': self.description,
+            'inputs': self.inputs,
+            'params': self.params,
+            'dir': self.workingDir
+        }
 
-def verify_cache_dir(path): 
-    print(path)
-    if os.path.isdir(path + '/.cache'):
-        print("Cache directory found.")
-        return True
-    return False
+
+def verify_cache_file(path):
+    """
+    Verify file inside path, else create
+    """
+    
+    file = path + '/.cache/cache.db'
+
+    if not os.path.exists(path + '/.cache'):
+        os.makedirs(path + '/.cache')
+
+    try:
+        with open(file):
+            print("Cache database already created.")
+    except IOError:
+        open(file, 'a').close()
+        print("Cache file created successfully.")
+
+
+def set_cache_state(path, value=1):
+    """
+    Save the current state of the cache.
+    """
+    file_path = path + '/.cache/state'
+    try: 
+        with open(file_path, 'w') as state:
+            state.write(str(value))
+    except IOError:
+        f = open(file_path, 'a')
+        f.write(str(value))
+        f.close()
+
+
+def get_cache_state(path):
+    """
+    Read state inside .cache this works like a 
+    env variable. 
+    """
+    file_path = path + '/.cache/state'
+    try:
+        with open(file_path, 'r') as state:
+            cache_state = state.read()
+            return cache_state
+    except IOError:
+        return False
+
 
 
 @contextlib.contextmanager
 def work_cache(sg):
-    # TODO Verify .cache dir
-    # TODO Verify datase is inside
-    if verify_cache_dir(os.getcwd()):
-        record = ActionRecord(sg[0], sg[1], sg[3], sg[2].action_type,
-                          sg[2].inputs, sg[2].parameters, os.getcwd())
-        cache = Cache('None',os.getcwd()+'/.cache')
-        msg=cache.connection()
+    provenance = {
+        'inputs': {},
+        'params': {},
+        'action_type': 'import'
+    }
+    if get_cache_state(os.getcwd()):
+        
+        if sg[2] is not None:
+            provenance['inputs'] = sg[2].inputs
+            provenance['params'] = sg[2].parameters
+            provenance['action_type'] = sg[2].action_type
+        
+        record = ActionRecord(sg[0], sg[1], sg[3], provenance['action_type'],
+                              provenance['inputs'], provenance['params'], os.getcwd())
+        cache = Cache('None', os.getcwd()+'/.cache')
+        msg = cache.connection()
         if msg:
-            msg=cache.saveAction(record)
+            msg = cache.saveAction(record)
             print(msg)
         else:
-            msg=cache.isActionOnDB(record)
+            msg = cache.isActionOnDB(record)
             if msg:
                 print('Action alredy in chache')
             else:
-                 msg=cache.saveAction(record)
-                 print(msg)
+                msg = cache.saveAction(record)
+                print(msg)
     else:
-        raise NotImplementedError('Mandatory to have .cache directory created')
-    record = ActionRecord(sg[0], sg[1], sg[3], sg[2].action_type,
-                          sg[2].inputs, sg[2].parameters, os.getcwd())
-    print(record.name, record.action, record.description,
-          record.actionType, record.inputs, record.params, record.workingDir)
-
+        raise NotImplementedError('Please execute qiime cache activate')
     try:
         yield record
     finally:
         print("Finally working with Cache")
-
