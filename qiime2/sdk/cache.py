@@ -95,7 +95,8 @@ class ActionRecord():
 
 
 def verify_cache_dir(path): 
-    if os.path.isdir(path + '.cache'):
+    print(path)
+    if os.path.isdir(path + '/.cache'):
         print("Cache directory found.")
         return True
     return False
@@ -109,8 +110,8 @@ def work_cache(sg):
         print("Cache working")
     else:
         raise NotImplementedError('Mandatory to have .cache directory created')
-    record = ActionRecord(sg[0], sg[1], sg[2], sg[3].action_type,
-                          sg[3].inputs, sg[3].parameters, os.getcwd())
+    record = ActionRecord(sg[0], sg[1], sg[3], sg[2].action_type,
+                          sg[2].inputs, sg[2].parameters, os.getcwd())
     print(record.name, record.action, record.description,
           record.actionType, record.inputs, record.params, record.workingDir)
 
