@@ -212,16 +212,20 @@ def work_cache(sg):
                               provenance['inputs'], provenance['params'], os.getcwd())
         cache = Cache('None', os.getcwd()+'/.cache')
         msg = cache.connection()
-        if msg:
+        if provenance['action_type'] == 'import':
             msg = cache.saveAction(record)
             print(msg)
         else:
-            msg = cache.isActionOnDB(record)
             if msg:
-                print('Action alredy in chache')
-            else:
                 msg = cache.saveAction(record)
                 print(msg)
+            else:
+                msg = cache.isActionOnDB(record)
+                if msg:
+                    print('Action alredy in chache')
+                else:
+                    msg = cache.saveAction(record)
+                    print(msg)
     else:
         raise NotImplementedError('Please execute qiime cache activate')
     try:
